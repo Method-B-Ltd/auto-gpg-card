@@ -4,6 +4,8 @@ import pexpect
 import re
 import sys
 import argparse
+import random
+import string
 
 
 def run_gpg(opts: list):
@@ -12,6 +14,7 @@ def run_gpg(opts: list):
     :param opts: Extra command line parameters
     :return: Process spawned by pexpect.
     """
+    global_opts = ["--command-fd=0", "--status-fd=2", "--pinentry-mode", "loopback"] + opts
     global_opts = ["--command-fd=0", "--status-fd=2", "--pinentry-mode", "loopback"] + opts
     child = pexpect.spawn("gpg2", global_opts, timeout=60, logfile=sys.stdout,
                           encoding='utf-8')
@@ -128,7 +131,7 @@ def keytocard(key_id, admin_pin="12345678"):
     child.expect(pexpect.EOF)
 
 
-def do_all(name, email):
+def generate_and_load_key_to_card(name, email):
     """
     Handles the full process of generating a key and installing it on the card. Prints key ID
     :param name: Full name of owner
@@ -142,15 +145,72 @@ def do_all(name, email):
     print(f"Key ID: {key_id}")
 
 
+def set_pin(old_pin, new_pin):
+    child = run_gpg(["--card-edit"])
+    line_exchange(child, "cardedit.prompt", "passwd")
+    line_exchange(child, "passphrase.enter", old_pin)
+    line_exchange(child, "passphrase.enter", new_pin)
+    line_exchange(child, "passphrase.enter", new_pin)
+    child.expect(re.escape("PIN changed."))
+    line_exchange(child, "cardedit.prompt", "quit")
+    child.expect(pexpect.EOF)
+
+
+def set_admin_pin(old_pin, new_pin):
+    child = run_gpg(["--card-edit"])
+    line_exchange(child, "cardedit.prompt", "admin")
+    line_exchange(child, "cardedit.prompt", "passwd")
+    line_exchange(child, "cardutil.change_pin.menu", "3")
+    line_exchange(child, "passphrase.enter", old_pin)
+    line_exchange(child, "passphrase.enter", new_pin)
+    line_exchange(child, "passphrase.enter", new_pin)
+    child.expect(re.escape("PIN changed."))
+    line_exchange(child, "cardutil.change_pin.menu", "Q")
+    line_exchange(child, "cardedit.prompt", "quit")
+    child.expect(pexpect.EOF)
+
+
+def generate_pin(num_digits):
+    return "".join(random.choice(string.digits) for i in range(num_digits))
+
+
+def auto_set_pin():
+    new_pin = generate_pin(6)
+    set_pin(old_pin=args.default_pin, new_pin=new_pin)
+    print(f"New user PIN is {new_pin}")
+
+
+def auto_set_admin_pin():
+    new_pin = generate_pin(8)
+    set_admin_pin(old_pin=args.default_admin_pin, new_pin=new_pin)
+    print(f"New admin PIN is {new_pin}")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Set up a GPG card automatically.")
     parser.add_argument('action',
-                        help='The only action currently available is auto')
+                        help='Actions are auto, gen_load_key, set_pin, set_admin_pin')
     parser.add_argument('--name',
                         help='Full name of owner',
                         nargs="+")
     parser.add_argument('--email',
                         help='Email address of owner')
+    parser.add_argument('--default-pin',
+                        help='Current pin of the Yubikey, usually the factory default 123456',
+                        default="123456")
+    parser.add_argument('--default-admin-pin',
+                        help='Current admin pin of the Yubikey, usually the factory default 12345678',
+                        default="12345678")
     args = parser.parse_args()
-    assert args.action == "auto"
-    do_all(" ".join(args.name), args.email)
+    if args.action == "auto":
+        generate_and_load_key_to_card(" ".join(args.name), args.email)
+        auto_set_pin()
+        auto_set_admin_pin()
+    if args.action == "gen_load_key":
+        generate_and_load_key_to_card(" ".join(args.name), args.email)
+    elif args.action == "set_pin":
+        auto_set_pin()
+    elif args.action == "set_admin_pin":
+        auto_set_admin_pin()
+    else:
+        assert False, "Invalid command"

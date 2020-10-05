@@ -7,7 +7,7 @@ How to use:
 2. Before starting, ensure the Yubikey is correctly configured for USB. We assume you've already done this. 
 3. We assume you've not changed the PIN or admin PIN, this script uses the default. Be careful not to brick your card.
 4. Execute the programme: `./auto-gpg-card.py auto --name Alice Smith --email alice.smith@example.com`
-5. You need to change the PIN codes yourself.
+5. This script auto-generates new PIN and admin PIN codes, make a note of them.
 6. Note that your public key does not travel with your card, you'll need to export a copy.
 
 Cautions:
