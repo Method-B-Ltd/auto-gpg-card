@@ -178,12 +178,14 @@ def auto_set_pin():
     new_pin = generate_pin(6)
     set_pin(old_pin=args.default_pin, new_pin=new_pin)
     print(f"New user PIN is {new_pin}")
+    return new_pin
 
 
 def auto_set_admin_pin():
     new_pin = generate_pin(8)
     set_admin_pin(old_pin=args.default_admin_pin, new_pin=new_pin)
     print(f"New admin PIN is {new_pin}")
+    return new_pin
 
 
 if __name__ == "__main__":
@@ -204,8 +206,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
     if args.action == "auto":
         generate_and_load_key_to_card(" ".join(args.name), args.email)
-        auto_set_pin()
-        auto_set_admin_pin()
+        user_pin = auto_set_pin()
+        admin_pin = auto_set_admin_pin()
+        print(f"New user PIN is {user_pin}")
+        print(f"New admin PIN is {admin_pin}")
     elif args.action == "gen_load_key":
         generate_and_load_key_to_card(" ".join(args.name), args.email)
     elif args.action == "set_pin":
