@@ -206,7 +206,7 @@ if __name__ == "__main__":
         generate_and_load_key_to_card(" ".join(args.name), args.email)
         auto_set_pin()
         auto_set_admin_pin()
-    if args.action == "gen_load_key":
+    elif args.action == "gen_load_key":
         generate_and_load_key_to_card(" ".join(args.name), args.email)
     elif args.action == "set_pin":
         auto_set_pin()
